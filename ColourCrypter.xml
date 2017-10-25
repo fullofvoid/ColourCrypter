@@ -1,0 +1,14 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	   
+	<Script File="ColourCrypter.lua"/>
+	<Frame name="ColourCrypterFrame" parent="UIParent" toplevel="true" enableMouse="true">      
+		<Scripts> 
+			<OnLoad function="ColourCrypter_OnLoad" />  
+			<OnUpdate function="ColourCrypter_OnUpdate" />  
+		</Scripts> 
+		
+
+	</Frame>
+</Ui>
+
