@@ -170,7 +170,7 @@ function ColourCrypter_HandleEvents(self, event, ...)
 		end
 	elseif (event =="LOOT_OPENED") then
 		ColourCrypter_Variables.LootPending = false;
-	end
+  end
 end
 
 function ColourCrypter_InitVariables() 
@@ -193,6 +193,10 @@ end
 
 
 function ColourCrypter_TimedUpdate(elapsed)
+  --if(ColourCrypter_Variables.RunAuction) then 
+  --  PostAllBagsToAuction();
+  --  return;
+  --end
 	-- start, duration, enable =  GetSpellCooldown("Auto Attack")
 	-- print("start:"..start..", duration:"..duration..", enable:"..enable)
 	-- start, duration, enable =  GetSpellCooldown("Auto Shot")
@@ -206,7 +210,7 @@ function ColourCrypter_TimedUpdate(elapsed)
 	   ColourCrypter_Variables.RunAuction = false;
 	 end
 	end
-	local name = UnitCastingInfo("player");
+	lo4cal name = UnitCastingInfo("player");
 	if(name) then 
 		ColourCrypter_Variables.cryptotext:SetText("Casting "..name);
 		ColourCrypter_SetActionDoNothing();
