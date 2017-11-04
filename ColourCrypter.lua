@@ -90,8 +90,8 @@ function PostItemToAuction(itemID, container, slot)
     ClickAuctionSellItemButton();
     ClearCursor();
     -- Create 4 auctions of 5 items each for 1g bid, 1g50s buyout, 
-    -- with a duration of 24 hours
-    StartAuction(minBid, buyoutPrice, 1, count, 1)
+    -- with a duration of 48 hours
+    StartAuction(minBid, buyoutPrice, 3, count, 1)
     return true;
   end
   return false;
@@ -210,7 +210,7 @@ function ColourCrypter_TimedUpdate(elapsed)
 	   ColourCrypter_Variables.RunAuction = false;
 	 end
 	end
-	lo4cal name = UnitCastingInfo("player");
+	local name = UnitCastingInfo("player");
 	if(name) then 
 		ColourCrypter_Variables.cryptotext:SetText("Casting "..name);
 		ColourCrypter_SetActionDoNothing();
