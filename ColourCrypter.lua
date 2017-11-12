@@ -255,6 +255,7 @@ end
 function ColourCrypter_GetAuraRemainingTime(unit, buff, filter)
     if(buff) then
       local name, rank, icon, count, dispelType, duration, expires =  UnitAura(unit, buff, nil, filter);
+      --print("unit:"..unit..", buff:"..buff..", remainingTime:"..(expires - GetTime()));
       local remainingTime = 0;
       if(expires) then
         remainingTime = expires - GetTime();
@@ -314,13 +315,15 @@ function ColourCrypter_SetAction(name, action, unit)
 		ColourCrypter_Variables.cryptotext:SetText(name);
 		ColourCrypter_Variables.LastActionName = name;
 end
-
+--ColourCrypter_CheckSetAction(spell, action, unit, auraToAvoid, auraToAvoidOnUnit, auraFilter)
 --unit: target, focus, player, party1, party2, party3, party4, mouseover
-function ColourCrypter_CheckSetAction(spell, action, unit, buffToAvoid, buffToAvoidOnUnit)
+--auraFilter: HELPFUL(default), HARMFUL
+function ColourCrypter_CheckSetAction(spell, action, unit, auraToAvoid, auraToAvoidOnUnit, auraFilter)
   if(not action) then action = spell; end;
-  if(buffToAvoid) then
-    if(not buffToAvoidOnUnit) then buffToAvoidOnUnit = "player" end
-    if(ColourCrypter_GetBuffRemainingTime(buffToAvoidOnUnit, buffToAvoid) > ColourCrypter_Variables.ClickTimeBeforeCoolDownFinish) then return false; end
+  if(not auraFilter) then auraFilter = "HELPFUL"; end
+  if(auraToAvoid) then
+    if(not auraToAvoidOnUnit) then auraToAvoidOnUnit = "player" end
+    if(ColourCrypter_GetAuraRemainingTime(auraToAvoidOnUnit, auraToAvoid, auraFilter) > ColourCrypter_Variables.ClickTimeBeforeCoolDownFinish) then return false; end
   end
   local ready = ColourCrypter_IsSpellReady(spell, unit);
   if(ready) then
@@ -442,8 +445,9 @@ function ColourCrypter_VDH_CheckIsInActiveCombat()
 end
 
 
+--ColourCrypter_CheckSetAction(spell, action, unit, auraToAvoid, auraToAvoidOnUnit, auraFilter)
 --unit: target, focus, player, party1, party2, party3, party4, mouseover
---function ColourCrypter_CheckSetAction(spell, action, unit, buffToAvoid, buffToAvoidOnUnit)
+--auraFilter: HELPFUL(default), HARMFUL
 
 function ColourCrypter_VDH_Attack()
   local interabtable, casting = ColourCrypter_IsTargetIntereptable();
@@ -543,8 +547,9 @@ function ColourCrypter_BM_CheckIsInActiveCombat()
 end
 
 
+--ColourCrypter_CheckSetAction(spell, action, unit, auraToAvoid, auraToAvoidOnUnit, auraFilter)
 --unit: target, focus, player, party1, party2, party3, party4, mouseover
---function ColourCrypter_CheckSetAction(spell, action, unit, buffToAvoid, buffToAvoidOnUnit)
+--auraFilter: HELPFUL(default), HARMFUL
 
 function ColourCrypter_BM_Attack()
   local interabtable, casting = ColourCrypter_IsTargetIntereptable();
@@ -594,28 +599,29 @@ end
 ColourCrypter_BD_Variables =
 {
   --Left bar
-  ["Moonkin Form"]    = {["Key"] = {["R"] = 1/256;["G"] = 0/256;["B"] = (4+2)/256;},},
-  ["Travel Form"]     = {["Key"] = {["R"] = 2/256;["G"] = 0/256;["B"] = (4+2)/256;},},
-  ["Starsurge"]     = {["Key"] = {["R"] = 3/256;["G"] = 0/256;["B"] = (4+2)/256;},},
-  ["Starfall"]      = {["Key"] = {["R"] = 4/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Moonkin Form"]      = {["Key"] = {["R"] = 1/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Travel Form"]       = {["Key"] = {["R"] = 2/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Starsurge"]         = {["Key"] = {["R"] = 3/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Starfall"]          = {["Key"] = {["R"] = 4/256;["G"] = 0/256;["B"] = (4+2)/256;},},
   ["Astral Communion"]  = {["Key"] = {["R"] = 5/256;["G"] = 0/256;["B"] = (4+2)/256;},},
-  ["Incarnation: Chosen of Elune"]= {["Key"] = {["R"] = 6/256;["G"] = 0/256;["B"] = (4+2)/256;},},
-  ["Solar Beam"]      = {["Key"] = {["R"] = 9/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Celestial Alignment"]= {["Key"] = {["R"] = 6/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Stellar Flare"]     = {["Key"] = {["R"] = 7/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Solar Beam"]        = {["Key"] = {["R"] = 9/256;["G"] = 0/256;["B"] = (4+2)/256;},},
   ["Remove Corruption"] = {["Key"] = {["R"] =10/256;["G"] = 0/256;["B"] = (4+2)/256;},},
-  ["Healing Touch"]   = {["Key"] = {["R"] =11/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Healing Touch"]     = {["Key"] = {["R"] =11/256;["G"] = 0/256;["B"] = (4+2)/256;},},
   --Right bar
-  ["Sunfire"]       = {["Key"] = {["R"] = 1/256;["G"] = 0/256;["B"] = (1+4)/256;},},
-  ["Moonfire"]        = {["Key"] = {["R"] = 2/256;["G"] = 0/256;["B"] = (1+4)/256;},},
-  ["Solar Wrath"]     = {["Key"] = {["R"] = 3/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["Sunfire"]           = {["Key"] = {["R"] = 1/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["Moonfire"]          = {["Key"] = {["R"] = 2/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["Solar Wrath"]       = {["Key"] = {["R"] = 3/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   ["Lunar Strike"]      = {["Key"] = {["R"] = 4/256;["G"] = 0/256;["B"] = (1+4)/256;},},
-  ["New Moon"]        = {["Key"] = {["R"] = 5/256;["G"] = 0/256;["B"] = (1+4)/256;},},
-  --["Shred"]         = {["Key"] = {["R"] = 5/256;["G"] = 0/256;["B"] = (1+4)/256;},},
-  --["Rip"]         = {["Key"] = {["R"] = 6/256;["G"] = 0/256;["B"] = (1+4)/256;},},
-  --["Ferocious Bite"]    = {["Key"] = {["R"] = 7/256;["G"] = 0/256;["B"] = (1+4)/256;},},
-  --["Berserk"]       = {["Key"] = {["R"] = 8/256;["G"] = 0/256;["B"] = (1+4)/256;},},
-  ["Barkskin"]      = {["Key"] = {["R"] = 9/256;["G"] = 0/256;["B"] = (1+4)/256;},},
-  ["Renewal"]       = {["Key"] = {["R"] =10/256;["G"] = 0/256;["B"] = (  4)/256;},},
-  ["Swiftmend"]       = {["Key"] = {["R"] =11/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["New Moon"]          = {["Key"] = {["R"] = 5/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  --["Shred"]           = {["Key"] = {["R"] = 5/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  --["Rip"]             = {["Key"] = {["R"] = 6/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  --["Ferocious Bite"]  = {["Key"] = {["R"] = 7/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  --["Berserk"]         = {["Key"] = {["R"] = 8/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["Barkskin"]          = {["Key"] = {["R"] = 9/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["Renewal"]           = {["Key"] = {["R"] =10/256;["G"] = 0/256;["B"] = (  4)/256;},},
+  ["Swiftmend"]         = {["Key"] = {["R"] =11/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   ["Rejuvenation"]      = {["Key"] = {["R"] =12/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   
   ["DotMinHealth"] = 400000;
@@ -695,14 +701,14 @@ function ColourCrypter_BD_TimedUpdate()
   else
     --if(ColourCrypter_Variables.LootPending) then
     --  ColourCrypter_SetAction(ColourCrypter_AnyClass_Variable.Loot);
-    --if(not ColourCrypter_Variables.BuffStatus.TravelForm 
-      --and not ColourCrypter_Variables.BuffStatus.Prowl
-    --  and IsFlyableArea() --IsOutdoors()
-    --  and not  UnitAffectingCombat("player")) then
-    --  if ColourCrypter_CheckSetAction("Travel Form") then return; end
-    --else 
-      ColourCrypter_SetActionDoNothing();
-    --end
+    if(not ColourCrypter_Variables.BuffStatus.TravelForm 
+      and not ColourCrypter_Variables.BuffStatus.Prowl
+      and IsOutdoors() --IsFlyableArea()
+      and not  UnitAffectingCombat("player")) then
+      if ColourCrypter_CheckSetAction("Travel Form") then return; end
+      else 
+        ColourCrypter_SetActionDoNothing();
+      end
   end
 end
 
@@ -754,95 +760,73 @@ function ColourCrypter_BD_Defend()
   return false;
 end
 
-
+--/run test12()
+function test12()
+  local sname, srank, sicon, scount =  UnitAura("player", "Solar Empowerment", nil, "HELPFUL");
+  
+  print("scount:"..scount );
+end
+--ColourCrypter_CheckSetAction(spell, action, unit, auraToAvoid, auraToAvoidOnUnit, auraFilter)
+--unit: target, focus, player, party1, party2, party3, party4, mouseover
+--auraFilter: HELPFUL(default), HARMFUL
 function ColourCrypter_BD_AttackAoe()
-  --if not debuf moonfire
-  --if not debuf sunfire
-  --star fall
-  --Lunar strike
-  if ColourCrypter_CheckSetAction("Incarnation: Chosen of Elune") then return true; end
+  if ColourCrypter_CheckSetAction("Celestial Alignment") then return true; end
   local  unitPower = UnitPower("player");
   if( unitPower < 25) then
     if ColourCrypter_CheckSetAction("Astral Communion") then return true; end
   end
-  if(ColourCrypter_Variables.BuffStatus.LunarEmpowerment > 1 or ColourCrypter_Variables.BuffStatus.SolarEmpowerment > 1) then
+  --dump astral power
+  if ColourCrypter_CheckSetAction("Stellar Flare", nil, "target", "Stellar Flare", "target", "HARMFUL") then return true; end
+  local lname, lrank, licon, lcount =  UnitAura("player", "Lunar Empowerment", nil, "HELPFUL");
+  local sname, srank, sicon, scount =  UnitAura("player", "Solar Empowerment", nil, "HELPFUL");
+  if(not lcount) then lcount = 0; end
+  if(not scount) then scount = 0; end
+  if(lcount > 1 or scount > 1) then
     if ColourCrypter_CheckSetAction("Starfall") then return true; end
-  else
-    if ColourCrypter_CheckSetAction("Starsurge") then return true; end
   end
+  if ColourCrypter_CheckSetAction("Starsurge", nil, "target") then return true; end
   
-  local targetHealth = UnitHealth("target");
-  if ( targetHealth  > ColourCrypter_BD_Variables.DotMinHealth ) then 
-    if(ColourCrypter_Variables.BuffStatus.MoonfireRemainingTime < 6) then
-      if ColourCrypter_CheckSetAction("Moonfire") then return true; end
-    end
-    if(ColourCrypter_Variables.BuffStatus.SunfireRemainingTime < 6) then
-      if ColourCrypter_CheckSetAction("Sunfire") then return true; end
-    end
-  end
-  local charges, maxCharges, start, duration = GetSpellCharges("New Moon") ;
-  
-  if(charges > 1) then
-    if ColourCrypter_CheckSetAction("New Moon") then return true; end;
-  end
+  --Generate astral power
+  if ColourCrypter_CheckSetAction("Moonfire", nil, "target", "Moonfire", "target","HARMFUL" ) then return true; end
+  if ColourCrypter_CheckSetAction("Sunfire", nil, "target", "Sunfire", "target", "HARMFUL") then return true; end
+  if ColourCrypter_CheckSetAction("New Moon", nil, "target") then return true; end;
   if(ColourCrypter_Variables.BuffStatus.LunarEmpowerment > 0) then 
-    if ColourCrypter_CheckSetAction("Lunar Strike") then return true; end
+    if ColourCrypter_CheckSetAction("Lunar Strike", nil, "target") then return true; end
   end
-  if(ColourCrypter_Variables.BuffStatus.SolarEmpowerment > 0) then
-    if ColourCrypter_CheckSetAction("Solar Wrath") then return true; end
+  if(ColourCrypter_Variables.BuffStatus.SolarEmpowerment > 0 ) then
+    if ColourCrypter_CheckSetAction("Solar Wrath", nil, "target") then return true; end
   end
-  
-  if ColourCrypter_CheckSetAction("New Moon") then return true; end;
-  if ColourCrypter_CheckSetAction("Lunar Strike") then return true; end
+  if ColourCrypter_CheckSetAction("Lunar Strike", nil, "target") then return true; end
   ColourCrypter_SetActionDoNothing();
 end
 
+--ColourCrypter_CheckSetAction(spell, action, unit, auraToAvoid, auraToAvoidOnUnit, auraFilter)
+--unit: target, focus, player, party1, party2, party3, party4, mouseover
+--auraFilter: HELPFUL(default), HARMFUL
 function ColourCrypter_BD_AttackSingle()
-  
-  --Incarnation: Chosen of Elune
-  --if power less than 25 Astral Communion
-  --if not debuf moonfire
-  --if not debuf sunfire
-  --star surge
-  --Starsurge
-  --if LunarEmpowerment Lunar Strike
-  --Solar Wrath
-  
-  
-  if ColourCrypter_CheckSetAction("Incarnation: Chosen of Elune") then return true; end
+  if ColourCrypter_CheckSetAction("Celestial Alignment") then return true; end
   local  unitPower = UnitPower("player");
   if( unitPower < 25) then
     if ColourCrypter_CheckSetAction("Astral Communion") then return true; end
   end
+  --dump astral power
+  if ColourCrypter_CheckSetAction("Stellar Flare", nil, "target", "Stellar Flare", "target", "HARMFUL") then return true; end
   if(ColourCrypter_Variables.BuffStatus.LunarEmpowerment > 2 or ColourCrypter_Variables.BuffStatus.SolarEmpowerment > 2) then
     if ColourCrypter_CheckSetAction("Starfall") then return true; end
-  else
-    if ColourCrypter_CheckSetAction("Starsurge") then return true; end
   end
+  if ColourCrypter_CheckSetAction("Starsurge", nil, "target") then return true; end
   
-  local targetHealth = UnitHealth("target");
-  if ( targetHealth  > ColourCrypter_BD_Variables.DotMinHealth ) then 
-    if(ColourCrypter_Variables.BuffStatus.MoonfireRemainingTime < 6) then
-      if ColourCrypter_CheckSetAction("Moonfire") then return true; end
-    end
-    if(ColourCrypter_Variables.BuffStatus.SunfireRemainingTime < 6) then
-      if ColourCrypter_CheckSetAction("Sunfire") then return true; end
-    end
-  end
-  local charges, maxCharges, start, duration = GetSpellCharges("New Moon") ;
-  
-  if(charges > 1) then
-    if ColourCrypter_CheckSetAction("New Moon") then return true; end;
-  end
+  --Generate astral power
+  if ColourCrypter_CheckSetAction("Moonfire", nil, "target", "Moonfire", "target","HARMFUL" ) then return true; end
+  if ColourCrypter_CheckSetAction("Sunfire", nil, "target", "Sunfire", "target", "HARMFUL") then return true; end
+  if ColourCrypter_CheckSetAction("New Moon", nil, "target") then return true; end;
   if(ColourCrypter_Variables.BuffStatus.SolarEmpowerment > 0 ) then
-    if ColourCrypter_CheckSetAction("Solar Wrath") then return true; end
+    if ColourCrypter_CheckSetAction("Solar Wrath", nil, "target") then return true; end
   end
   if(ColourCrypter_Variables.BuffStatus.LunarEmpowerment > 0) then 
-    if ColourCrypter_CheckSetAction("Lunar Strike") then return true; end
+    if ColourCrypter_CheckSetAction("Lunar Strike", nil, "target") then return true; end
   end
-  
-  if ColourCrypter_CheckSetAction("New Moon") then return true; end;
-    if ColourCrypter_CheckSetAction("Solar Wrath") then return true; end
+  if ColourCrypter_CheckSetAction("Solar Wrath") then return true; end
   ColourCrypter_SetActionDoNothing();
 end
 
