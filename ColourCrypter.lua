@@ -269,15 +269,18 @@ end
 
 function ColourCrypter_IsTargetIntereptable()
 	local name, subText, text, texture, startTime, endTime, isTradeSkill, castID, uninterruptible = UnitCastingInfo("target");
-	if(uninterruptible == nil or uninterruptible == false ) then 
-	   return true, true; 
+	if(name)then
+  	if(uninterruptible == nil or uninterruptible == false ) then 
+  	   return true, true; 
+  	end
+  	return false, true;
 	end
 	local name2, subText2, text2, texture2, startTime2, endTime2, isTradeSkill2, uninterruptible2 = UnitChannelInfo("target");
-	if(uninterruptible2 == nil or uninterruptible2 == false) then  
-	   return true, true; 
-	end
-	if( name or name2) then 
-	   return false, true; 
+	if(name2)then
+  	if(uninterruptible2 == nil or uninterruptible2 == false) then  
+  	   return true, true; 
+  	end
+  	return false, true;
 	end
 	return false, false; 
 end
@@ -740,7 +743,8 @@ function ColourCrypter_BD_Defend()
   --apply swift mend, 
   --apply renwe, 
   --if buff not up apply survival instincts 
-  if(ColourCrypter_IsTargetIntereptable()) then
+  local interabtable, casting = ColourCrypter_IsTargetIntereptable();
+  if (interabtable) then
     if ColourCrypter_CheckSetAction("Solar Beam") then return true; end
   end
   if(ColourCrypter_Variables.BuffStatus.CursePoison) then
@@ -760,12 +764,6 @@ function ColourCrypter_BD_Defend()
   return false;
 end
 
---/run test12()
-function test12()
-  local sname, srank, sicon, scount =  UnitAura("player", "Solar Empowerment", nil, "HELPFUL");
-  
-  print("scount:"..scount );
-end
 --ColourCrypter_CheckSetAction(spell, action, unit, auraToAvoid, auraToAvoidOnUnit, auraFilter)
 --unit: target, focus, player, party1, party2, party3, party4, mouseover
 --auraFilter: HELPFUL(default), HARMFUL
@@ -777,15 +775,12 @@ function ColourCrypter_BD_AttackAoe()
   end
   --dump astral power
   if ColourCrypter_CheckSetAction("Stellar Flare", nil, "target", "Stellar Flare", "target", "HARMFUL") then return true; end
-  local lname, lrank, licon, lcount =  UnitAura("player", "Lunar Empowerment", nil, "HELPFUL");
-  local sname, srank, sicon, scount =  UnitAura("player", "Solar Empowerment", nil, "HELPFUL");
-  if(not lcount) then lcount = 0; end
-  if(not scount) then scount = 0; end
-  if(lcount > 1 or scount > 1) then
+  if(ColourCrypter_Variables.BuffStatus.LunarEmpowerment  < 3 and ColourCrypter_Variables.BuffStatus.SolarEmpowerment  < 3) then
+    if ColourCrypter_CheckSetAction("Starsurge", nil, "target") then return true; end
+  end
+  if(unitPower > 90)then
     if ColourCrypter_CheckSetAction("Starfall") then return true; end
   end
-  if ColourCrypter_CheckSetAction("Starsurge", nil, "target") then return true; end
-  
   --Generate astral power
   if ColourCrypter_CheckSetAction("Moonfire", nil, "target", "Moonfire", "target","HARMFUL" ) then return true; end
   if ColourCrypter_CheckSetAction("Sunfire", nil, "target", "Sunfire", "target", "HARMFUL") then return true; end
@@ -811,10 +806,12 @@ function ColourCrypter_BD_AttackSingle()
   end
   --dump astral power
   if ColourCrypter_CheckSetAction("Stellar Flare", nil, "target", "Stellar Flare", "target", "HARMFUL") then return true; end
-  if(ColourCrypter_Variables.BuffStatus.LunarEmpowerment > 2 or ColourCrypter_Variables.BuffStatus.SolarEmpowerment > 2) then
+  if(ColourCrypter_Variables.BuffStatus.LunarEmpowerment  < 3 and ColourCrypter_Variables.BuffStatus.SolarEmpowerment  < 3) then
+    if ColourCrypter_CheckSetAction("Starsurge", nil, "target") then return true; end
+  end
+  if(unitPower > 90)then
     if ColourCrypter_CheckSetAction("Starfall") then return true; end
   end
-  if ColourCrypter_CheckSetAction("Starsurge", nil, "target") then return true; end
   
   --Generate astral power
   if ColourCrypter_CheckSetAction("Moonfire", nil, "target", "Moonfire", "target","HARMFUL" ) then return true; end
