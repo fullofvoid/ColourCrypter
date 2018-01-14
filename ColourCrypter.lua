@@ -135,20 +135,15 @@ function SetMountedCamera()
    end
 end
 
-function MouseLookOnRun()
-   if(GetUnitSpeed("player") >= 7) then
-    if(not ColourCrypter_Variables.MouseLookOn)then
-      MouselookStart();
-      ColourCrypter_Variables.MouseLookOn = true;
-    end
-   else
+function ToggleMouseLook()
+  ColourCrypter_Variables.MouseLookOn = (not ColourCrypter_Variables.MouseLookOn);
     if(ColourCrypter_Variables.MouseLookOn)then
+      MouselookStart();
+    else
       MouselookStop();
-      ColourCrypter_Variables.MouseLookOn = false;
     end
-   end
+   
 end
-
 function ColourCrypter_CheckSetActionLoot()
   --update last combat unit
   if(UnitThreatSituation("player", "target")) then
@@ -158,13 +153,16 @@ function ColourCrypter_CheckSetActionLoot()
   --update loot pending 
   ColourCrypter_Variables.LootPending = (ColourCrypter_Variables.LastCombatUnit and CanLootUnit(ColourCrypter_Variables.LastCombatUnit));
   --if loot pending
-  if ColourCrypter_Variables.LootPending  then
+  if ColourCrypter_Variables.AutoLoot and ColourCrypter_Variables.LootPending  then
     --if mouse over on corpes
+    if(IsMouselooking())then MouselookStop() end
     local mouseOverUnitGuid = UnitGUID("mouseover"); 
-    if(ColourCrypter_Variables.AutoLoot and mouseOverUnitGuid and CanLootUnit(mouseOverUnitGuid)) then
+    if(mouseOverUnitGuid and CanLootUnit(mouseOverUnitGuid)) then
       ColourCrypter_SetAction(ColourCrypter_AnyClass_Variable.Loot.SpellName, ColourCrypter_AnyClass_Variable.Loot);
       return true;
     end
+  elseif ColourCrypter_Variables.MouseLookOn then
+    MouselookStart();
   end 
   return false;
 end
@@ -255,7 +253,6 @@ end
 
 function ColourCrypter_TimedUpdate(elapsed)
   SetMountedCamera();
-	MouseLookOnRun();
 	if(ColourCrypter_CheckSetActionLoot())then return;	end
 	
 	local name = UnitCastingInfo("player");
@@ -292,12 +289,20 @@ function ColourCrypter_TimedUpdate(elapsed)
 	end
 end
 
+function ColourCrypter_GetPlayerBuffRemainingTime(buff)
+  return ColourCrypter_GetAuraRemainingTime("player", buff, "HELPFUL|PLAYER");
+end 
+
+function ColourCrypter_GetPlayerDebuffRemainingTime(buff)
+  return ColourCrypter_GetAuraRemainingTime("player", buff, "HARMFUL|PLAYER");
+end 
+
 function ColourCrypter_GetBuffRemainingTime(unit, buff)
-  return ColourCrypter_GetAuraRemainingTime(unit, buff, "HELPFUL|PLAYER");
+  return ColourCrypter_GetAuraRemainingTime(unit, buff, "HELPFUL");
 end 
 
 function ColourCrypter_GetDebuffRemainingTime(unit, buff)
-  return ColourCrypter_GetAuraRemainingTime(unit, buff, "HARMFUL|PLAYER");
+  return ColourCrypter_GetAuraRemainingTime(unit, buff, "HARMFUL");
 end 
 --ColourCrypter_GetAuraRemainingTime(unit, buff, filter)
 function ColourCrypter_GetAuraRemainingTime(unit, buff, filter)
@@ -307,6 +312,9 @@ function ColourCrypter_GetAuraRemainingTime(unit, buff, filter)
       local remainingTime = 0;
       if(expires) then
         remainingTime = expires - GetTime();
+      end
+      if(remainingTime < 0)then
+        remainingTime = 1000;
       end
       return remainingTime;
     else
@@ -334,6 +342,20 @@ function ColourCrypter_IsTargetIntereptable()
 end
 
 
+function ColourCrypter_UnitHasCursePoison(unit)
+
+  local i = 1;
+  local name, rank, icon, count, dispelType, duration, expires =  UnitAura(unit, i, "HARMFUL");
+  while name do
+    if(dispelType == "Curse" or dispelType == "Poison" ) then
+      return true;
+    end
+    i = i + 1;
+    name, rank, icon, count, dispelType, duration, expires =  UnitAura(unit, i, "HARMFUL");
+  end
+  return false;
+end
+
 
 function ColourCrypter_SetActionDoNothing()
 		ColourCrypter_Variables.cryptotexture:SetColorTexture(ColourCrypter_AnyClass_Variable.DoNothing.Key.R,
@@ -351,11 +373,12 @@ function ColourCrypter_CheckSetAction(spell, action, unit, auraToAvoid, auraToAv
   if(not auraFilter) then auraFilter = "HELPFUL"; end
   if(auraToAvoid) then
     if(not auraToAvoidOnUnit) then auraToAvoidOnUnit = "player" end
-    if(ColourCrypter_GetAuraRemainingTime(auraToAvoidOnUnit, auraToAvoid, auraFilter) > ColourCrypter_Variables.ClickTimeBeforeCoolDownFinish) then return false; end
+    local auraRemainingTime = ColourCrypter_GetAuraRemainingTime(auraToAvoidOnUnit, auraToAvoid, auraFilter); 
+    if(auraRemainingTime > ColourCrypter_Variables.ClickTimeBeforeCoolDownFinish) then return false; end
   end
   local ready = ColourCrypter_IsSpellReady(spell, unit);
   if(ready) then
-    ColourCrypter_SetAction(spell, ColourCrypter_Variables.ActionObject[action]);
+    ColourCrypter_SetAction(action, ColourCrypter_Variables.ActionObject[action]);
   end
   return ready;
 end
@@ -371,7 +394,13 @@ function ColourCrypter_IsSpellReady(spell, unit)
   local start, duration, enable = GetSpellCooldown(spell);
   if(not duration) then duration = 0; end;
   if(duration > ColourCrypter_Variables.ClickTimeBeforeCoolDownFinish) then return false; end
-  if(unit) then if( not IsSpellInRange(spell, unit)) then return false; end end
+  if(unit) then 
+    if( IsSpellInRange(spell, unit)== 0) then return false; end
+    if(UnitIsDead(unit)) then return false; end
+    if(IsHarmfulSpell(spell)) then
+      if(not  UnitCanAttack("player", unit)) then return false; end
+    end
+  end
   local isUsable, notEnoughMana = IsUsableSpell(spell);
   return (isUsable and (not notEnoughMana));
 end
@@ -880,15 +909,121 @@ end
 ---------------------------------------------------------------------FD.Lua-----------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------FD.Lua-----------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------FD.Lua-----------------------------------------------------------------------------------------------------------------
+ColourCrypter_FD_Variables =
+{
+  --Left bar
+  ["Cat Form"]          = {["Key"] = {["R"] = 1/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Travel Form"]       = {["Key"] = {["R"] = 2/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Bear Form"]         = {["Key"] = {["R"] = 3/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Shred"]             = {["Key"] = {["R"] = 4/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Wild Charge"]       = {["Key"] = {["R"] = 5/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  --["Astral Communion"]  = {["Key"] = {["R"] = 6/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  --["Celestial Alignment"]= {["Key"] = {["R"] = 7/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  --["Stellar Flare"]     = {["Key"] = {["R"] = 8/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  --["Solar Beam"]        = {["Key"] = {["R"] = 9/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["SelfClense"]        = {["Key"] = {["R"] =10/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Thrash"]            = {["Key"] = {["R"] =11/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Survival Instincts"]= {["Key"] = {["R"] =12/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  --Right bar
+  ["Prowl"]             = {["Key"] = {["R"] = 1/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["BerserkFury"]       = {["Key"] = {["R"] = 2/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["Tiger's Fury"]      = {["Key"] = {["R"] = 3/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["Rake"]              = {["Key"] = {["R"] = 4/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["Ferocious Bite"]    = {["Key"] = {["R"] = 5/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["ShadowRake"]        = {["Key"] = {["R"] = 6/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  --["Rip"]             = {["Key"] = {["R"] = 6/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  --["Ferocious Bite"]  = {["Key"] = {["R"] = 7/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  --["Berserk"]         = {["Key"] = {["R"] = 8/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  --["Barkskin"]          = {["Key"] = {["R"] = 9/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  --["Renewal"]           = {["Key"] = {["R"] =10/256;["G"] = 0/256;["B"] = (  4)/256;},},
+  ["Swipe"]            = {["Key"] = {["R"] =11/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["Regrowth"]          = {["Key"] = {["R"] =12/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  
+  AttackMode = 0, -- 0 travel, 1 cat, 2 bear
+  --
+};
+--mode 1 cat, 2 bear
+function ColourCrypter_FD_ToggleAttackMode(mode)
+
+
+  if(ColourCrypter_FD_Variables.AttackMode == mode)then
+    ColourCrypter_FD_Variables.AttackMode = 0;
+  else
+    ColourCrypter_FD_Variables.AttackMode = mode;
+  end
+end
 
 function ColourCrypter_FD_TimedUpdate()
-
-  --ColourCrypter_Variables.ActionObject = ColourCrypter_FD_Variables;
+  ColourCrypter_Variables.ActionObject = ColourCrypter_FD_Variables;
+  if (UnitHealth("player")/UnitHealthMax("player")) < 0.40 then
+    if ColourCrypter_CheckSetAction("Regrowth", nil, "player", "Regrowth", "player", "HELPFUL") then return true; end
+    if ColourCrypter_CheckSetAction("Survival Instincts", nil, "player", "Survival Instincts", "player", "HELPFUL") then return true; end
+  end
+  if(ColourCrypter_UnitHasCursePoison("player")) then
+    if ColourCrypter_CheckSetAction("Remove Corruption","SelfClense") then return true; end
+  end
   
-  if(ColourCrypter_Variables.LootPending) then
-    --print("LootPending!"..GetTime());
+  if(ColourCrypter_FD_Variables.AttackMode == 0)then
+    ColourCrypter_FD_TravelAttack();
+  elseif (ColourCrypter_FD_Variables.AttackMode == 1)then
+    ColourCrypter_FD_CatAttack();
+  else
+    ColourCrypter_FD_BearAttack();
+  end
+end
+
+    --if ColourCrypter_CheckSetAction("Stellar Flare", nil, "target", "Stellar Flare", "target", "HARMFUL") then return true; end
+function ColourCrypter_FD_CatAttack()
+  --print("Cat a")
+  if(ColourCrypter_Variables.AutoLoot)then
+    if(not ColourCrypter_Variables.LootPending) then
+      if ColourCrypter_CheckSetAction("Prowl") then return true; end
+    end
+  else
+    if ColourCrypter_CheckSetAction("Prowl") then return true; end
+  end
+  if ColourCrypter_CheckSetAction("Cat Form", nil, "player", "Cat Form", "player", "HELPFUL") then return true; end
+  if ColourCrypter_CheckSetAction("Wild Charge", nil, "target") then return true; end
+  
+  --BerserkFurry Tiger's Fury not in cooldown and target in melee range
+  if(ColourCrypter_IsSpellReady("Tiger's Fury") and ColourCrypter_IsSpellReady("Shred", "target") )then
+    if ColourCrypter_CheckSetAction("Berserk","BerserkFury") then return true; end
+  end
+  if (UnitPower("player") <= 70)then
+    if ColourCrypter_CheckSetAction("Tiger's Fury") then return true; end
   end
    
-  ColourCrypter_SetActionDoNothing();
+  if( ColourCrypter_GetPlayerBuffRemainingTime("Prowl") == 0 and ColourCrypter_IsSpellReady("Shadowmeld") )then
+    if ColourCrypter_CheckSetAction("Rake", "ShadowRake", "target", "Rake", "target", "HARMFUL") then return true; end
+  end
+  if ColourCrypter_CheckSetAction("Rake", nil, "target", "Rake", "target", "HARMFUL") then return true; end
   
+  if (UnitPower("player") >= 50)then
+    if(GetComboPoints("player", "target") >= 5 )then
+      if ColourCrypter_CheckSetAction("Ferocious Bite", nil, "target") then return true; end
+    end
+    if ColourCrypter_CheckSetAction("Shred", nil, "target") then return true; end
+  end
+  ColourCrypter_SetActionDoNothing();
+end
+
+function ColourCrypter_FD_BearAttack()
+  --print("Bear a")
+  if ColourCrypter_CheckSetAction("Bear Form", nil, "player", "Bear Form", "player", "HELPFUL") then return true; end
+  if ColourCrypter_CheckSetAction("Thrash", nil, "target") then return true; end
+  if ColourCrypter_CheckSetAction("Swipe", nil, "target") then return true; end
+  ColourCrypter_SetActionDoNothing();
+end
+
+function ColourCrypter_FD_TravelAttack()
+  --print("Travel a")
+  if (UnitHealth("player")/UnitHealthMax("player")) < 0.95 then
+    if ColourCrypter_CheckSetAction("Regrowth", nil, "player", "Regrowth", "player", "HELPFUL") then return true; end
+  end
+  if(IsOutdoors())then
+    if ColourCrypter_CheckSetAction("Travel Form", nil, "player", "Travel Form", "player", "HELPFUL") then return true; end
+  else
+    if ColourCrypter_CheckSetAction("Prowl") then return true; end
+  end
+  ColourCrypter_SetActionDoNothing();
 end
