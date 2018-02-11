@@ -52,8 +52,10 @@ ColourCrypter_Variables =
 	--Auto Loot related
 	AutoLoot= true,
 	LootPending = false,
-	LastCombatUnit = nil
+	LastCombatUnit = nil,
 	
+	
+	AttackMode = 0
 	--
 };
 function ToggleMouseLook()
@@ -110,7 +112,7 @@ function PostItemToAuction(itemID, container, slot)
   
   if(globalMedian ) then
     
-    local buyoutPrice = (globalMedian *0.9);
+    local buyoutPrice = (globalMedian);
     local minBid = buyoutPrice * 0.5;
     print(itemLink .. o['globalMedian'] .. minBid..buyoutPrice );
     -- Place an item in the auction slot
@@ -127,10 +129,12 @@ end
 
 function SetMountedCamera()
    if((not ColourCrypter_Variables.CameraZoomIn) and IsFlying())then
+    --SaveView(5)
     CameraZoomIn(50.0);
     ColourCrypter_Variables.CameraZoomIn = true;
    elseif((ColourCrypter_Variables.CameraZoomIn) and not IsFlying() )then
-    CameraZoomOut(8.0);
+    --SetView(5)
+    CameraZoomOut(15);
     ColourCrypter_Variables.CameraZoomIn = false;
    end
 end
@@ -144,12 +148,21 @@ function ToggleMouseLook()
     end
    
 end
+
+function ColourCrypter_ToggleAttackMode(mode)
+  if(ColourCrypter_Variables.AttackMode == mode)then
+    ColourCrypter_Variables.AttackMode = 0;
+  else
+    ColourCrypter_Variables.AttackMode = mode;
+  end
+end
+
 function ColourCrypter_CheckSetActionLoot()
   --update last combat unit
   if(UnitThreatSituation("player", "target")) then
     ColourCrypter_Variables.LastCombatUnit = UnitGUID("target");
   end
-  
+  if UnitAffectingCombat("player") then return end
   --update loot pending 
   ColourCrypter_Variables.LootPending = (ColourCrypter_Variables.LastCombatUnit and CanLootUnit(ColourCrypter_Variables.LastCombatUnit));
   --if loot pending
@@ -161,7 +174,7 @@ function ColourCrypter_CheckSetActionLoot()
       ColourCrypter_SetAction(ColourCrypter_AnyClass_Variable.Loot.SpellName, ColourCrypter_AnyClass_Variable.Loot);
       return true;
     end
-  elseif ColourCrypter_Variables.MouseLookOn then
+  elseif ColourCrypter_Variables.MouseLookOn and (not IsMouselooking())then
     MouselookStart();
   end 
   return false;
@@ -221,15 +234,15 @@ function ColourCrypter_HandleEvents(self, event, ...)
 		--print("Swinging ")	
 	--elseif (event == "PLAYER_LEAVE_COMBAT") then
 		--print("Stop Swinging ")
-	if (event == "UI_ERROR_MESSAGE") then
-		local message, messageString = ...
-		if(messageString == "There is nothing to be fetched.") then
-			ColourCrypter_Variables.LootPending = false;
-		end
-	elseif (event =="LOOT_OPENED") then
-		ColourCrypter_Variables.LootPending = false;
+	--if (event == "UI_ERROR_MESSAGE") then
+		--local message, messageString = ...
+		--if(messageString == "There is nothing to be fetched.") then
+		--	ColourCrypter_Variables.LootPending = false;
+		--end
+	--elseif (event =="LOOT_OPENED") then
+	--	ColourCrypter_Variables.LootPending = false;
 		--print("Loot opened");
-  end
+  --end
 end
 
 function ColourCrypter_InitVariables() 
@@ -316,9 +329,9 @@ function ColourCrypter_GetAuraRemainingTime(unit, buff, filter)
       if(remainingTime < 0)then
         remainingTime = 1000;
       end
-      return remainingTime;
+      return remainingTime, count;
     else
-      return 0;
+      return 0, 0;
      end
 end 
 
@@ -504,7 +517,6 @@ ColourCrypter_VDH_Variables =
 function ColourCrypter_VDH_TimedUpdate()
   ColourCrypter_Variables.ActionObject = ColourCrypter_VDH_Variables;
   if(ColourCrypter_VDH_CheckIsInActiveCombat()) then
-    ColourCrypter_Variables.LootPending = false;
     if (ColourCrypter_VDH_Attack()) then return true; end
   end
     ColourCrypter_SetActionDoNothing();
@@ -586,7 +598,7 @@ ColourCrypter_BM_Variables =
   ["Bestial Wrath"]       = {["Key"] = {["R"] = 1/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   ["Mend Pet"]            = {["Key"] = {["R"] = 2/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   ["Cobra Shot"]          = {["Key"] = {["R"] = 3/256;["G"] = 0/256;["B"] = (1+4)/256;},},
-  ["Multi-Shot"]          = {["Key"] = {["R"] = 4/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["MisdirectMulti"]          = {["Key"] = {["R"] = 4/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   ["Fetch"]               = {["Key"] = {["R"] = 5/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   ["Summon Random Favorite Mount"]= {["Key"] = {["R"] = 6/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   ["7"]                   = {["Key"] = {["R"] = 7/256;["G"] = 0/256;["B"] = (1+4)/256;},},
@@ -596,22 +608,26 @@ ColourCrypter_BM_Variables =
   ["11"]                  = {["Key"] = {["R"] =11/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   ["12"]                  = {["Key"] = {["R"] =12/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   --
+  AutoFetch = true,
 };
-
+--Multi-Shot
 
 function ColourCrypter_BM_TimedUpdate()
   ColourCrypter_Variables.ActionObject = ColourCrypter_BM_Variables;
-  if(ColourCrypter_BM_CheckIsInActiveCombat()) then
-    ColourCrypter_Variables.LootPending = true;
+  ColourCrypter_BM_Variables.AutoFetch = true;
+  ColourCrypter_Variables.AutoLoot = false;
+  
+  if(ColourCrypter_Variables.AttackMode > 0 ) then
     if (ColourCrypter_BM_Attack()) then return true; end
   end
   
-  if(ColourCrypter_Variables.AutoLoot
-      and not UnitAffectingCombat("player") and ColourCrypter_Variables.LootPending) then
+  if(ColourCrypter_BM_Variables.AutoFetch 
+      and not UnitAffectingCombat("player") 
+      and ColourCrypter_Variables.LootPending) then
       if( ColourCrypter_CheckSetAction("Fetch")) then return true; end
   end
   if(ColourCrypter_Variables.AutoMount
-      and not  UnitAffectingCombat("player")) 
+      and ColourCrypter_Variables.AttackMode == 0) 
       and GetUnitSpeed("player") == 0 
       and IsOutdoors()
       and (not ColourCrypter_Variables.LootPending)
@@ -622,15 +638,6 @@ function ColourCrypter_BM_TimedUpdate()
   ColourCrypter_SetActionDoNothing();
   return false;
 end
-
-
-function ColourCrypter_BM_CheckIsInActiveCombat()
-  
-  local canAttack = UnitCanAttack("player", "target");
-   local inCombat = UnitAffectingCombat("player");
-  return (canAttack and inCombat);
-end
-
 
 --ColourCrypter_CheckSetAction(spell, action, unit, auraToAvoid, auraToAvoidOnUnit, auraFilter)
 --unit: target, focus, player, party1, party2, party3, party4, mouseover
@@ -647,26 +654,28 @@ function ColourCrypter_BM_Attack()
     if ColourCrypter_CheckSetAction("Exhilaration") then return true; end
   end
   local petHealth = (UnitHealth("pet"))/UnitHealthMax("pet");
-  if(unitHealth < 0.99)then
+  if(petHealth < 0.95  )then
     if ColourCrypter_CheckSetAction("Mend Pet") then return true; end
+  end
+  if(UnitHealth("pet") == 0 )then
+    if ColourCrypter_CheckSetAction("Revive Pet", "Mend Pet") then return true; end
+  end
+  
+  if(UnitCanAttack("player", "target")) then
+    if ColourCrypter_CheckSetAction("Aspect of the Wild", nil, "target") then return true; end
+    if ColourCrypter_CheckSetAction("Bestial Wrath", nil, "target") then return true; end
   end
   
   if ColourCrypter_CheckSetAction("Dire Beast", nil, "target") then return true; end
-  if ColourCrypter_CheckSetAction("Aspect of the Wild") then return true; end
-  if ColourCrypter_CheckSetAction("Bestial Wrath") then return true; end
-  
-  
-  local start, duration, enable = GetSpellCooldown("Bestial Wrath");
-  if(not duration) then duration = 1000; end;
-  if(duration <5) then 
-    ColourCrypter_SetActionDoNothing();
-    return true; 
-  end
   if ColourCrypter_CheckSetAction("Kill Command", nil, "target") then return true; end
-  if ColourCrypter_CheckSetAction("Cobra Shot", nil, "target") then return true; end 
   
-  ColourCrypter_SetActionDoNothing();
-  return true;
+  if(ColourCrypter_Variables.AttackMode == 1)then
+    if ColourCrypter_CheckSetAction("Cobra Shot", nil, "target") then return true; end
+  else
+    if ColourCrypter_CheckSetAction("Multi-Shot", "MisdirectMulti", "target") then return true; end
+  end 
+  
+  return false;
 end
 
 
@@ -684,15 +693,16 @@ ColourCrypter_BD_Variables =
   --Left bar
   ["Moonkin Form"]      = {["Key"] = {["R"] = 1/256;["G"] = 0/256;["B"] = (4+2)/256;},},
   ["Travel Form"]       = {["Key"] = {["R"] = 2/256;["G"] = 0/256;["B"] = (4+2)/256;},},
-  ["Cat Form"]          = {["Key"] = {["R"] = 3/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Prowl"]          = {["Key"] = {["R"] = 3/256;["G"] = 0/256;["B"] = (4+2)/256;},},
   ["Starsurge"]         = {["Key"] = {["R"] = 4/256;["G"] = 0/256;["B"] = (4+2)/256;},},
   ["Starfall"]          = {["Key"] = {["R"] = 5/256;["G"] = 0/256;["B"] = (4+2)/256;},},
   ["Astral Communion"]  = {["Key"] = {["R"] = 6/256;["G"] = 0/256;["B"] = (4+2)/256;},},
   ["Celestial Alignment"]= {["Key"] = {["R"] = 7/256;["G"] = 0/256;["B"] = (4+2)/256;},},
   ["Stellar Flare"]     = {["Key"] = {["R"] = 8/256;["G"] = 0/256;["B"] = (4+2)/256;},},
   ["Solar Beam"]        = {["Key"] = {["R"] = 9/256;["G"] = 0/256;["B"] = (4+2)/256;},},
-  ["Remove Corruption"] = {["Key"] = {["R"] =10/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["SelfClense"]        = {["Key"] = {["R"] =10/256;["G"] = 0/256;["B"] = (4+2)/256;},},
   ["Healing Touch"]     = {["Key"] = {["R"] =11/256;["G"] = 0/256;["B"] = (4+2)/256;},},
+  ["Regrowth"]          = {["Key"] = {["R"] =12/256;["G"] = 0/256;["B"] = (4+2)/256;},},
   --Right bar
   ["Sunfire"]           = {["Key"] = {["R"] = 1/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   ["Moonfire"]          = {["Key"] = {["R"] = 2/256;["G"] = 0/256;["B"] = (1+4)/256;},},
@@ -702,7 +712,7 @@ ColourCrypter_BD_Variables =
   ["Warrior of Elune"]  = {["Key"] = {["R"] = 6/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   --["Rip"]             = {["Key"] = {["R"] = 6/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   --["Ferocious Bite"]  = {["Key"] = {["R"] = 7/256;["G"] = 0/256;["B"] = (1+4)/256;},},
-  --["Berserk"]         = {["Key"] = {["R"] = 8/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["Typhoon"]           = {["Key"] = {["R"] = 8/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   ["Barkskin"]          = {["Key"] = {["R"] = 9/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   ["Renewal"]           = {["Key"] = {["R"] =10/256;["G"] = 0/256;["B"] = (  4)/256;},},
   ["Swiftmend"]         = {["Key"] = {["R"] =11/256;["G"] = 0/256;["B"] = (1+4)/256;},},
@@ -759,146 +769,90 @@ function ColourCrypter_BD_ScanBuffs()
   end
 end
 
-function ColourCrypter_BD_ScanTargetDeBuffs()
-  --ColourCrypter_Variables.BuffStatus
-  ColourCrypter_Variables.BuffStatus.MoonfireRemainingTime = 0;
-  ColourCrypter_Variables.BuffStatus.SunfireRemainingTime = 0;
-  local i = 1;
-  local nameExist = true;
-  while nameExist do
-    local name, rank, icon, count, dispelType, duration, expires =  UnitAura("target", i, "HARMFUL");
-    if(name == "Sunfire") then
-      ColourCrypter_Variables.BuffStatus.SunfireRemainingTime = expires- ColourCrypter_Variables.BuffStatus.CurrentTime;
-      --print("Unit test : Target Buff : Sunfire");
-    elseif(name == "Moonfire") then
-      ColourCrypter_Variables.BuffStatus.MoonfireRemainingTime = expires- ColourCrypter_Variables.BuffStatus.CurrentTime;
-      --print("Unit test : Target Buff : Moonfire");
-    elseif(not name) then
-      nameExist = false;
-    end
-    i = i + 1;
-  end
-end
-
 
 function ColourCrypter_BD_TimedUpdate()
 
   ColourCrypter_Variables.ActionObject = ColourCrypter_BD_Variables;
-  ColourCrypter_BD_ScanBuffs();
-  ColourCrypter_BD_ScanTargetDeBuffs();
   
-  if(ColourCrypter_BD_CheckIsInActiveCombat()) then
-    ColourCrypter_Variables.LootPending = false;
+  if(ColourCrypter_Variables.AttackMode > 0) then
     if ColourCrypter_BD_Defend() then return; end
-    if ColourCrypter_BD_Attack() then return; end
+    ColourCrypter_BD_Attack();
+    return;
   else
-    --if(ColourCrypter_Variables.LootPending) then
-    --  ColourCrypter_SetAction(ColourCrypter_AnyClass_Variable.Loot);
     if (UnitHealth("player")/UnitHealthMax("player")) < 1.0 then
-      if(not ColourCrypter_Variables.BuffStatus.Rejuvenation) then 
-        if ColourCrypter_CheckSetAction("Rejuvenation") then return true; end
-      end
+      if ColourCrypter_CheckSetAction("Rejuvenation", nil, "player", "Rejuvenation", "player", "HELPFUL") then return true; end
     end
-    
-    if(not ColourCrypter_Variables.BuffStatus.TravelForm 
-      and not ColourCrypter_Variables.BuffStatus.CatForm
-      and not  UnitAffectingCombat("player")) 
-      and GetUnitSpeed("player") > 1 then
-      if(IsOutdoors()) then 
-        if ColourCrypter_CheckSetAction("Travel Form") then return; end
-      end
-      if ColourCrypter_CheckSetAction("Cat Form") then return; end
-    end 
+    if(IsOutdoors())then
+      if ColourCrypter_CheckSetAction("Travel Form", nil, "player", "Travel Form", "player", "HELPFUL") then return true; end
+    else
+      if ColourCrypter_CheckSetAction("Prowl") then return true; end
+    end
     ColourCrypter_SetActionDoNothing();
   end
 end
 
 
-function ColourCrypter_BD_CheckIsInActiveCombat()
-  
-  local inCombat = UnitAffectingCombat("player");
-  if(ColourCrypter_Variables.StartAttack)then
-    if(inCombat)then
-      ColourCrypter_Variables.StartAttack = false;
-    end
-    return true;
-  end
-  return inCombat;
-  --local canAttack = UnitCanAttack("player", "target");
-  --local inRange = IsSpellInRange("Moonfire", "target");
-  --local inCombat = UnitAffectingCombat("player");
-  --print(tostring(canAttack)..tostring(inRange)..tostring(inCombat))
-  --return (canAttack and inRange and inCombat);
-end
 
 function ColourCrypter_BD_Defend()
--- interupt
---if ColourCrypter_Variables.BuffStatus.CursePoison, Apply Remove Corruption
--- Check health below 50 then 
-  --if buff not up apply rejov 
-  --apply swift mend, 
-  --apply renwe, 
-  --if buff not up apply survival instincts 
   local interabtable, casting = ColourCrypter_IsTargetIntereptable();
   if (interabtable) then
     if ColourCrypter_CheckSetAction("Solar Beam") then return true; end
   end
-  if(ColourCrypter_Variables.BuffStatus.CursePoison) then
-    if ColourCrypter_CheckSetAction("Remove Corruption") then return true; end
+  
+  if(ColourCrypter_UnitHasCursePoison("player")) then
+    if ColourCrypter_CheckSetAction("Remove Corruption","SelfClense") then return true; end
   end
-  if (UnitHealth("player")/UnitHealthMax("player")) < 0.70 then
-    if ColourCrypter_CheckSetAction("Barkskin") then return true; end
-    if(not ColourCrypter_Variables.BuffStatus.Rejuvenation) then 
-      if ColourCrypter_CheckSetAction("Rejuvenation") then return true; end
-    end
+  
+  if(ColourCrypter_GetPlayerBuffRemainingTime("Barkskin") > 0 or ColourCrypter_GetDebuffRemainingTime("target", "Typhoon") > 0) then
     if ColourCrypter_CheckSetAction("Swiftmend") then return true; end
+    if ColourCrypter_CheckSetAction("Rejuvenation", nil, "player", "Rejuvenation", "player", "HELPFUL") then return true; end
+  end
+  if (UnitHealth("player")/UnitHealthMax("player")) < 0.60 then
     if ColourCrypter_CheckSetAction("Renewal") then return true; end
+    if ColourCrypter_CheckSetAction("Typhoon",nil,"target") then return true; end
+    if ColourCrypter_CheckSetAction("Barkskin",nil,"target", "Typhoon", "target", "HARMFUL") then return true; end
+    if ColourCrypter_CheckSetAction("Regrowth", nil, "player", "Regrowth", "player", "HELPFUL") then return true; end
   end
-  if(not ColourCrypter_Variables.BuffStatus.MoonkinForm) then
-    if ColourCrypter_CheckSetAction("Moonkin Form") then return true; end
+  
+  if(not UnitAffectingCombat("player") and UnitHealth("player") < UnitHealthMax("player")) then
+    if ColourCrypter_CheckSetAction("Rejuvenation", nil, "player", "Rejuvenation", "player", "HELPFUL") then return true; end
   end
+  if ColourCrypter_CheckSetAction("Moonkin Form", nil, "player", "Moonkin Form", "player", "HELPFUL") then return true; end
   return false;
 end
 
 
 
 function ColourCrypter_BD_Attack()
-  if ColourCrypter_CheckSetAction("Warrior of Elune") then return true; end
-  if ColourCrypter_CheckSetAction("Celestial Alignment") then return true; end
+  if(UnitCanAttack("player", "target") and UnitAffectingCombat("player")) then
+    if ColourCrypter_CheckSetAction("Warrior of Elune") then return true; end
+    if ColourCrypter_CheckSetAction("Celestial Alignment") then return true; end
+  end
+  
+  if ColourCrypter_CheckSetAction("Moonfire", nil, "target", "Moonfire", "target","HARMFUL" ) then return true; end
+  if ColourCrypter_CheckSetAction("Sunfire", nil, "target", "Sunfire", "target", "HARMFUL") then return true; end
+  if(ColourCrypter_GetPlayerBuffRemainingTime("Owlkin Frenzy") > 0 ) then
+    if ColourCrypter_CheckSetAction("Lunar Strike", nil, "target") then return true; end
+  end
+  if(ColourCrypter_GetPlayerBuffRemainingTime("Solar Empowerment") > 0) then
+    if ColourCrypter_CheckSetAction("Solar Wrath", nil, "target") then return true; end
+  end
+  if(ColourCrypter_GetPlayerBuffRemainingTime("Lunar Empowerment") > 0) then 
+    if ColourCrypter_CheckSetAction("Lunar Strike", nil, "target") then return true; end
+  end
+  
+  
   local  unitPower = UnitPower("player");
-  if( unitPower < 25) then
+  if( unitPower < 40) then
     if ColourCrypter_CheckSetAction("Astral Communion") then return true; end
   end
-  --dump astral power
+  if ColourCrypter_CheckSetAction("Starsurge", nil, "target") then return true; end
   if ColourCrypter_CheckSetAction("Stellar Flare", nil, "target", "Stellar Flare", "target", "HARMFUL") then return true; end
-  if(ColourCrypter_Variables.BuffStatus.LunarEmpowerment  < 3 and ColourCrypter_Variables.BuffStatus.SolarEmpowerment  < 3) then
-    if ColourCrypter_CheckSetAction("Starsurge", nil, "target") then return true; end
-  end
   if(unitPower > 90)then
     if ColourCrypter_CheckSetAction("Starfall") then return true; end
   end
-  
-  --Generate astral power
-  if(ColourCrypter_Variables.BuffStatus.OwlkinFrenzy) then
-    if ColourCrypter_CheckSetAction("Lunar Strike", nil, "target") then return true; end
-  end
-  if ColourCrypter_CheckSetAction("Moonfire", nil, "target", "Moonfire", "target","HARMFUL" ) then return true; end
-  if ColourCrypter_CheckSetAction("Sunfire", nil, "target", "Sunfire", "target", "HARMFUL") then return true; end
   if ColourCrypter_CheckSetAction("New Moon", nil, "target") then return true; end;
-  if(ColourCrypter_Variables.AoeAttack) then
-    if(ColourCrypter_Variables.BuffStatus.LunarEmpowerment > 0) then 
-      if ColourCrypter_CheckSetAction("Lunar Strike", nil, "target") then return true; end
-    end
-  end
-  if(ColourCrypter_Variables.BuffStatus.SolarEmpowerment > 0 ) then
-    if ColourCrypter_CheckSetAction("Solar Wrath", nil, "target") then return true; end
-  end
-  if(ColourCrypter_Variables.BuffStatus.LunarEmpowerment > 0) then 
-    if ColourCrypter_CheckSetAction("Lunar Strike", nil, "target") then return true; end
-  end
-  if(ColourCrypter_Variables.AoeAttack) then 
-    if ColourCrypter_CheckSetAction("Lunar Strike", nil, "target") then return true; end
-  end
+  
   if ColourCrypter_CheckSetAction("Solar Wrath", nil, "target") then return true; end
   ColourCrypter_SetActionDoNothing();
 end
@@ -934,24 +888,15 @@ ColourCrypter_FD_Variables =
   --["Rip"]             = {["Key"] = {["R"] = 6/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   --["Ferocious Bite"]  = {["Key"] = {["R"] = 7/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   --["Berserk"]         = {["Key"] = {["R"] = 8/256;["G"] = 0/256;["B"] = (1+4)/256;},},
-  --["Barkskin"]          = {["Key"] = {["R"] = 9/256;["G"] = 0/256;["B"] = (1+4)/256;},},
-  --["Renewal"]           = {["Key"] = {["R"] =10/256;["G"] = 0/256;["B"] = (  4)/256;},},
-  ["Swipe"]            = {["Key"] = {["R"] =11/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["Rejuvenation"]      = {["Key"] = {["R"] = 9/256;["G"] = 0/256;["B"] = (1+4)/256;},},
+  ["Swiftmend"]         = {["Key"] = {["R"] =10/256;["G"] = 0/256;["B"] = (  4)/256;},},
+  ["Swipe"]             = {["Key"] = {["R"] =11/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   ["Regrowth"]          = {["Key"] = {["R"] =12/256;["G"] = 0/256;["B"] = (1+4)/256;},},
   
   AttackMode = 0, -- 0 travel, 1 cat, 2 bear
   --
 };
 --mode 1 cat, 2 bear
-function ColourCrypter_FD_ToggleAttackMode(mode)
-
-
-  if(ColourCrypter_FD_Variables.AttackMode == mode)then
-    ColourCrypter_FD_Variables.AttackMode = 0;
-  else
-    ColourCrypter_FD_Variables.AttackMode = mode;
-  end
-end
 
 function ColourCrypter_FD_TimedUpdate()
   ColourCrypter_Variables.ActionObject = ColourCrypter_FD_Variables;
@@ -975,6 +920,12 @@ end
     --if ColourCrypter_CheckSetAction("Stellar Flare", nil, "target", "Stellar Flare", "target", "HARMFUL") then return true; end
 function ColourCrypter_FD_CatAttack()
   --print("Cat a")
+  
+  if (UnitHealth("player")/UnitHealthMax("player")) < 0.65 then
+    if ColourCrypter_CheckSetAction("Swiftmend") then return true; end
+    if ColourCrypter_CheckSetAction("Rejuvenation", nil, "player", "Rejuvenation", "player", "HELPFUL") then return true; end
+  end
+  
   if(ColourCrypter_Variables.AutoLoot)then
     if(not ColourCrypter_Variables.LootPending) then
       if ColourCrypter_CheckSetAction("Prowl") then return true; end
@@ -985,14 +936,16 @@ function ColourCrypter_FD_CatAttack()
   if ColourCrypter_CheckSetAction("Cat Form", nil, "player", "Cat Form", "player", "HELPFUL") then return true; end
   if ColourCrypter_CheckSetAction("Wild Charge", nil, "target") then return true; end
   
-  --BerserkFurry Tiger's Fury not in cooldown and target in melee range
-  if(ColourCrypter_IsSpellReady("Tiger's Fury") and ColourCrypter_IsSpellReady("Shred", "target") )then
-    if ColourCrypter_CheckSetAction("Berserk","BerserkFury") then return true; end
-  end
-  if (UnitPower("player") <= 70)then
-    if ColourCrypter_CheckSetAction("Tiger's Fury") then return true; end
-  end
-   
+  if(UnitHealth("target") > (UnitHealthMax("player") * 0.20) )then
+    --BerserkFurry Tiger's Fury not in cooldown and target in melee range
+    if ( ColourCrypter_IsSpellReady("Shred", "target") )then
+      if ColourCrypter_CheckSetAction("Berserk","BerserkFury") then return true; end
+    end
+    --end
+    if ((UnitPowerMax("player") - UnitPower("player")) >= 60 )then
+      if ColourCrypter_CheckSetAction("Tiger's Fury") then return true; end
+    end
+  end 
   if( ColourCrypter_GetPlayerBuffRemainingTime("Prowl") == 0 and ColourCrypter_IsSpellReady("Shadowmeld") )then
     if ColourCrypter_CheckSetAction("Rake", "ShadowRake", "target", "Rake", "target", "HARMFUL") then return true; end
   end
@@ -1017,8 +970,8 @@ end
 
 function ColourCrypter_FD_TravelAttack()
   --print("Travel a")
-  if (UnitHealth("player")/UnitHealthMax("player")) < 0.95 then
-    if ColourCrypter_CheckSetAction("Regrowth", nil, "player", "Regrowth", "player", "HELPFUL") then return true; end
+  if (UnitHealth("player")/UnitHealthMax("player")) < 0.90 then
+    if ColourCrypter_CheckSetAction("Rejuvenation", nil, "player", "Rejuvenation", "player", "HELPFUL") then return true; end
   end
   if(IsOutdoors())then
     if ColourCrypter_CheckSetAction("Travel Form", nil, "player", "Travel Form", "player", "HELPFUL") then return true; end
